@@ -21,6 +21,7 @@ from datetime import date
 import duckdb
 
 from pipeline.config import BRONZE_DIR, DEMO_MODE, DUCKDB_PATH
+from pipeline.gold.matchup_table import DEFAULT_EXPORT_PATH as HR_GOLD_EXPORT_PATH
 from pipeline.gold.matchup_table import run_all as build_hr_gold
 from pipeline.ingestion.schedule_ingestion import ingest_schedule_range, load_schedule_to_silver
 from pipeline.ingestion.statcast_ingestion import ingest_date_range
@@ -71,7 +72,7 @@ def run_pipeline(start: str, end: str, skip_enrich: bool = False) -> None:
         ).fetchone()[0] > 0
         if has_pa_table:
             logger.info("[3/4] Building HR-prop Gold layer...")
-            build_hr_gold(con)
+            build_hr_gold(con, export_path=HR_GOLD_EXPORT_PATH)
         else:
             logger.info("[3/4] No plate_appearances table — skipping HR-prop Gold")
 

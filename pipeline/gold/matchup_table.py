@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import duckdb
 
@@ -36,7 +37,11 @@ from pipeline.gold.pitcher_features import run_all as build_pitcher_tables
 logger = logging.getLogger(__name__)
 
 
-def build_batter_matchup_features(con: duckdb.DuckDBPyConnection) -> None:
+def build_batter_matchup_features(
+    con: duckdb.DuckDBPyConnection, export_path: Path | None = None
+) -> None:
+    """Build the table; export to parquet only when export_path is given
+    (production paths pass it explicitly — tests never write to data/)."""
     logger.info("Building batter_matchup_features (Gold)")
 
     con.execute("""
@@ -123,22 +128,26 @@ def build_batter_matchup_features(con: duckdb.DuckDBPyConnection) -> None:
     logger.info("batter_matchup_features: %d rows, %s HR games (base rate %s)",
                 n, hr, hr_rate)
 
-    out = GOLD_DIR / "batter_matchup_features.parquet"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    con.execute(f"COPY batter_matchup_features TO '{out}' (FORMAT PARQUET, COMPRESSION SNAPPY)")
-    logger.info("Gold table written: %s", out)
+    if export_path is not None:
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        con.execute(f"COPY batter_matchup_features TO '{export_path}' "
+                    f"(FORMAT PARQUET, COMPRESSION SNAPPY)")
+        logger.info("Gold table written: %s", export_path)
 
 
-def run_all(con: duckdb.DuckDBPyConnection) -> None:
+DEFAULT_EXPORT_PATH = GOLD_DIR / "batter_matchup_features.parquet"
+
+
+def run_all(con: duckdb.DuckDBPyConnection, export_path: Path | None = None) -> None:
     """Build the full HR-prop Gold layer in dependency order."""
     build_batter_game_rolling(con)
     build_pitcher_tables(con)
     build_game_context(con)
-    build_batter_matchup_features(con)
+    build_batter_matchup_features(con, export_path=export_path)
     logger.info("HR-prop Gold layer complete.")
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     with duckdb.connect(str(DUCKDB_PATH)) as con:
-        run_all(con)
+        run_all(con, export_path=DEFAULT_EXPORT_PATH)
