@@ -62,6 +62,7 @@ def build_plate_appearances(con: duckdb.DuckDBPyConnection) -> None:
         CAST(launch_speed IS NOT NULL AS INTEGER)     AS is_batted_ball,
         launch_speed,
         launch_angle,
+        estimated_woba,
         is_barrel,
         bb_type,
         -- Spray angle in degrees from straightaway CF; sign-flipped by

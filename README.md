@@ -213,7 +213,15 @@ make train-hr                                             # calibrated artifact
 make slate DATE=2025-07-04                                # daily increment
 make score-hr DATE=2025-07-04                             # P(HR) per batter
 make cards                                                # top-10 prop cards
+make board DATE=2025-07-04 && make board-ui               # slate matchup grid
 ```
+
+**Matchup board:** a Kasper-style slate grid (`dashboard/matchup_board.py`) —
+every projected hitter vs the opposing probable starter with color-graded
+ISO / xwOBA / xwOBAcon / SwS% / Barrel% / pulled-Barrel% / sweet-spot% /
+FB% / HardHit% / LA plus a FORM arrow (30-day vs 365-day contact quality),
+all computed from data strictly before the slate date. Where proprietary
+sites show composite ratings, ours shows the calibrated model P(HR).
 
 Requires `ODDS_API_KEY` (The Odds API, player-props tier) for live lines;
 everything else runs on free data sources.

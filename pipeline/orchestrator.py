@@ -23,7 +23,11 @@ import duckdb
 from pipeline.config import BRONZE_DIR, DEMO_MODE, DUCKDB_PATH
 from pipeline.gold.matchup_table import DEFAULT_EXPORT_PATH as HR_GOLD_EXPORT_PATH
 from pipeline.gold.matchup_table import run_all as build_hr_gold
-from pipeline.ingestion.schedule_ingestion import ingest_schedule_range, load_schedule_to_silver
+from pipeline.ingestion.schedule_ingestion import (
+    ingest_player_names,
+    ingest_schedule_range,
+    load_schedule_to_silver,
+)
 from pipeline.ingestion.statcast_ingestion import ingest_date_range
 from pipeline.ingestion.weather_ingestion import build_game_weather, ingest_weather_range
 from pipeline.silver.cleaning import create_players_table, load_bronze_to_silver
@@ -60,6 +64,10 @@ def run_pipeline(start: str, end: str, skip_enrich: bool = False) -> None:
             create_players_table(con)
             load_schedule_to_silver(con)
             build_plate_appearances(con)
+            try:
+                ingest_player_names(con)
+            except Exception as exc:
+                logger.warning("Player-name resolution failed (continuing): %s", exc)
             if any((BRONZE_DIR / "weather").glob("**/*.parquet")):
                 build_game_weather(con)
 

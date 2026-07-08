@@ -93,6 +93,15 @@ cards:
 	@echo "🃏 Prop cards"
 	$(PYTHON) reports.prop_card --edges data/gold/prop_edges.parquet --top 10
 
+## Build the slate matchup board (Kasper-style hitter grid) for a date
+board:
+	@echo "🗓  Matchup board for $(DATE)"
+	$(PYTHON) pipeline.gold.matchup_board --date $(DATE)
+
+## Launch the matchup board UI
+board-ui:
+	streamlit run dashboard/matchup_board.py
+
 ## Launch Streamlit dashboard
 dashboard:
 	@echo "📊 Starting Streamlit dashboard"

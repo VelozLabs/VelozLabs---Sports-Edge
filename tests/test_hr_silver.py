@@ -36,6 +36,7 @@ def _pitch_row(game_pk, at_bat, pitch_no, batter, pitcher, stand, events=None, *
         "home_team": "PHI", "away_team": "NYM",
         "events": events,
         "launch_speed": None, "launch_angle": None,
+        "estimated_woba": None,
         "is_barrel": False, "bb_type": None,
         "hc_x": None, "hc_y": None,
     }

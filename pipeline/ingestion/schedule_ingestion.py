@@ -35,8 +35,10 @@ from pipeline.config import BRONZE_DIR
 logger = logging.getLogger(__name__)
 
 MLB_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
+MLB_PEOPLE_URL = "https://statsapi.mlb.com/api/v1/people"
 HYDRATE = "probablePitcher,team"
 REQUEST_TIMEOUT_S = 30
+PEOPLE_BATCH_SIZE = 100
 
 SCHEDULE_COLS = [
     "game_pk", "game_date", "game_datetime_utc", "day_night", "game_type",
@@ -134,6 +136,63 @@ def _ingest_single_day(game_date: str) -> Path:
     df.to_parquet(out_path, index=False, engine="pyarrow", compression="snappy")
     logger.info("Wrote %d games → %s", len(df), out_path)
     return out_path
+
+
+def fetch_people_json(person_ids: list[int]) -> dict[str, Any]:
+    """One Stats API people call for up to PEOPLE_BATCH_SIZE player ids."""
+    resp = requests.get(
+        MLB_PEOPLE_URL,
+        params={"personIds": ",".join(str(i) for i in person_ids)},
+        timeout=REQUEST_TIMEOUT_S,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def parse_people_json(payload: dict[str, Any]) -> pd.DataFrame:
+    """Flatten a people payload to (player_id, full_name, bats, throws)."""
+    rows = [{
+        "player_id": p.get("id"),
+        "full_name": p.get("fullName"),
+        "bats": (p.get("batSide", {}) or {}).get("code"),
+        "throws": (p.get("pitchHand", {}) or {}).get("code"),
+    } for p in payload.get("people", [])]
+    return pd.DataFrame(rows, columns=["player_id", "full_name", "bats", "throws"])
+
+
+def ingest_player_names(con) -> None:
+    """
+    Resolve real names for every batter/pitcher id in Silver via the free
+    Stats API people endpoint (batched, ~100 ids per request), and build the
+    Silver `player_names` table. Skips ids already resolved, so incremental
+    daily runs only fetch new call-ups.
+    """
+    out_path = BRONZE_DIR / "players" / "names.parquet"
+    known: set[int] = set()
+    frames: list[pd.DataFrame] = []
+    if out_path.exists():
+        existing = pd.read_parquet(out_path)
+        frames.append(existing)
+        known = set(existing["player_id"].astype(int))
+
+    ids = [int(r[0]) for r in con.execute("""
+        SELECT DISTINCT batter_id FROM pitches WHERE batter_id IS NOT NULL
+        UNION SELECT DISTINCT pitcher_id FROM pitches WHERE pitcher_id IS NOT NULL
+    """).fetchall()]
+    missing = sorted(set(ids) - known)
+    logger.info("Resolving %d new player names (%d already cached)",
+                len(missing), len(known))
+
+    for i in range(0, len(missing), PEOPLE_BATCH_SIZE):
+        batch = missing[i:i + PEOPLE_BATCH_SIZE]
+        frames.append(parse_people_json(fetch_people_json(batch)))
+
+    if frames:
+        names = pd.concat(frames, ignore_index=True).drop_duplicates("player_id")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        names.to_parquet(out_path, index=False)
+        con.execute("CREATE OR REPLACE TABLE player_names AS SELECT * FROM names")
+        logger.info("player_names table: %d players", len(names))
 
 
 def load_schedule_to_silver(con) -> None:
