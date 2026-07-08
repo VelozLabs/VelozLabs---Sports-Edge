@@ -82,8 +82,12 @@ def _batter_history_cte(alias: str, days: int) -> str:
                      WHEN events = 'home_run' THEN 4 ELSE 0 END)        AS total_bases,
             SUM(CASE WHEN events IN ('single','double','triple','home_run')
                      THEN 1 ELSE 0 END)                                 AS hits,
-            SUM(CASE WHEN events IN ('walk','intent_walk') THEN 1 ELSE 0 END) AS bb,
+            -- unintentional walks only: canonical wOBA excludes IBB from
+            -- both numerator and denominator
+            SUM(CASE WHEN events = 'walk' THEN 1 ELSE 0 END)            AS bb,
             SUM(CASE WHEN events = 'hit_by_pitch' THEN 1 ELSE 0 END)    AS hbp,
+            SUM(CASE WHEN events IN ('sac_fly','sac_fly_double_play')
+                     THEN 1 ELSE 0 END)                                 AS sf,
             SUM(CASE WHEN is_batted_ball = 1 THEN estimated_woba END)   AS xwoba_bbe_sum,
             SUM(CASE WHEN is_barrel THEN 1 ELSE 0 END)                  AS barrels,
             SUM(CASE WHEN is_barrel AND spray_angle_adj < -15
@@ -93,6 +97,8 @@ def _batter_history_cte(alias: str, days: int) -> str:
             SUM(CASE WHEN bb_type = 'fly_ball' THEN 1 ELSE 0 END)       AS fly_balls,
             SUM(CASE WHEN launch_speed >= 95 THEN 1 ELSE 0 END)         AS hard_hits,
             AVG(CASE WHEN is_batted_ball = 1 THEN launch_angle END)     AS la_avg,
+            -- switch-hitters collapse to their modal side here; these are
+            -- blended (not platoon-split) stats, unlike the training table
             MODE(stand)                                                 AS stand
         FROM plate_appearances
         WHERE game_date <  DATE '{{slate_date}}'
@@ -125,6 +131,23 @@ def build_matchup_board(
     has_names = con.execute(
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='player_names'"
     ).fetchone()[0] > 0
+
+    # slot lookup degrades gracefully when the Gold batter features haven't
+    # been built (standalone `make board` against a fresh silver DB)
+    has_bgr = con.execute(
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='batter_game_rolling'"
+    ).fetchone()[0] > 0
+    slot_join = (
+        """LEFT JOIN (
+                SELECT batter_id, ARG_MAX(b_avg_slot_30d, game_date) AS b_avg_slot_30d
+                FROM batter_game_rolling
+                WHERE game_date < DATE '{slate_date}'
+                GROUP BY batter_id
+            ) b ON b.batter_id = r.batter_id"""
+        if has_bgr else
+        "LEFT JOIN (SELECT NULL::BIGINT AS batter_id, NULL::DOUBLE AS b_avg_slot_30d) b "
+        "ON b.batter_id = r.batter_id"
+    )
     names_join = (
         "LEFT JOIN player_names nm ON nm.player_id = r.batter_id"
         if has_names else
@@ -162,15 +185,22 @@ def build_matchup_board(
         FROM schedule WHERE game_date = DATE '{{slate_date}}'
     ),
 
-    -- roster proxy: recent PAs for the team, ordered by recent lineup slot
+    -- roster proxy: recent PAs for the team, ordered by recent lineup slot.
+    -- A traded batter is kept ONLY on his most-recent team (team_rank = 1).
     recent AS (
-        SELECT batter_id, batter_team,
-               COUNT(*) AS pa_recent,
-               MAX(game_date) AS last_seen
-        FROM plate_appearances
-        WHERE game_date <  DATE '{{slate_date}}'
-          AND game_date >= DATE '{{slate_date}}' - INTERVAL {ROSTER_LOOKBACK_DAYS} DAYS
-        GROUP BY batter_id, batter_team
+        SELECT * FROM (
+            SELECT batter_id, batter_team,
+                   COUNT(*) AS pa_recent,
+                   MAX(game_date) AS last_seen,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY batter_id
+                       ORDER BY MAX(game_date) DESC, COUNT(*) DESC
+                   ) AS team_rank
+            FROM plate_appearances
+            WHERE game_date <  DATE '{{slate_date}}'
+              AND game_date >= DATE '{{slate_date}}' - INTERVAL {ROSTER_LOOKBACK_DAYS} DAYS
+            GROUP BY batter_id, batter_team
+        ) WHERE team_rank = 1
     ),
     roster AS (
         SELECT * FROM (
@@ -181,12 +211,7 @@ def build_matchup_board(
                        ORDER BY COALESCE(b.b_avg_slot_30d, 99), r.pa_recent DESC
                    ) AS roster_rank
             FROM recent r
-            LEFT JOIN (
-                SELECT batter_id, ARG_MAX(b_avg_slot_30d, game_date) AS b_avg_slot_30d
-                FROM batter_game_rolling
-                WHERE game_date < DATE '{{slate_date}}'
-                GROUP BY batter_id
-            ) b ON b.batter_id = r.batter_id
+            {slot_join}
         ) WHERE roster_rank <= {ROSTER_MAX_HITTERS}
     ),
 
@@ -228,8 +253,10 @@ def build_matchup_board(
         p365.pit                                             AS pit_365d,
         h365.bip                                             AS bip_365d,
         ROUND((h365.total_bases - h365.hits) * 1.0 / NULLIF(h365.ab, 0), 3)  AS iso_365d,
+        -- wOBA denominator = AB + uBB + HBP + SF (sac flies count in the
+        -- denominator even though they aren't at-bats)
         ROUND((h365.xwoba_bbe_sum + {W_BB} * h365.bb + {W_HBP} * h365.hbp)
-              / NULLIF(h365.ab + h365.bb + h365.hbp, 0), 3)  AS xwoba_365d,
+              / NULLIF(h365.ab + h365.bb + h365.hbp + h365.sf, 0), 3)  AS xwoba_365d,
         ROUND(h365.xwoba_bbe_sum / NULLIF(h365.bip, 0), 3)   AS xwobacon_365d,
         ROUND(p365.swstr * 1.0 / NULLIF(p365.pit, 0), 3)     AS sws_365d,
         ROUND(h365.pulled_barrels * 1.0 / NULLIF(h365.bip, 0), 3) AS pbrl_365d,
@@ -245,7 +272,7 @@ def build_matchup_board(
               / NULLIF((h30.xwoba_bbe_sum / NULLIF(h30.bip, 0))
                        + (h365.xwoba_bbe_sum / NULLIF(h365.bip, 0)), 0), 0) AS form_pct,
         CASE
-            WHEN h30.bip IS NULL OR h365.bip IS NULL THEN NULL
+            WHEN COALESCE(h30.bip, 0) = 0 OR COALESCE(h365.bip, 0) = 0 THEN NULL
             WHEN (h30.xwoba_bbe_sum / NULLIF(h30.bip, 0))
                  > (1 + {FORM_STEADY_BAND}) * (h365.xwoba_bbe_sum / NULLIF(h365.bip, 0))
                  THEN '↑'
@@ -271,6 +298,19 @@ def build_matchup_board(
     df = con.execute("SELECT * FROM matchup_board").fetchdf()
     logger.info("matchup_board: %d hitter rows across %d games for %s",
                 len(df), df["game_pk"].nunique() if len(df) else 0, slate_date)
+
+    # Statcast and the Stats API can disagree on team abbreviations; a
+    # mismatch makes the roster join return zero hitters SILENTLY. Surface it.
+    scheduled = {t for row in con.execute(
+        "SELECT home_team_abbr, away_team_abbr FROM schedule WHERE game_date = ?",
+        [slate_date]).fetchall() for t in row if t}
+    covered = set(df["batter_team"].unique()) if len(df) else set()
+    uncovered = scheduled - covered
+    if uncovered:
+        logger.warning(
+            "No roster rows for scheduled team(s) %s — check team-abbreviation "
+            "mismatch between Statcast and the MLB Stats API, or missing recent PAs",
+            sorted(uncovered))
 
     if export_path is not None:
         export_path.parent.mkdir(parents=True, exist_ok=True)

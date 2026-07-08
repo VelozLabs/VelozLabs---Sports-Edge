@@ -66,6 +66,24 @@ def con():
             xwoba=0.20, bb_type="popup", spray=5.0),
         _pa("2024-06-05", 2, 20, "BOS", "double", ls=101.0, la=18.0,
             xwoba=0.80, bb_type="line_drive", spray=-10.0),
+        # batter 30 (NYY): single + sac fly + walk → xwOBA denominator must
+        # include the sac fly (regression: gate finding #1)
+        _pa("2024-06-02", 1, 30, "NYY", "single", ls=95.0, la=10.0,
+            xwoba=0.90, bb_type="line_drive", spray=0.0),
+        _pa("2024-06-02", 3, 30, "NYY", "sac_fly", ls=97.0, la=35.0,
+            xwoba=0.90, bb_type="fly_ball", spray=5.0),
+        _pa("2024-06-02", 5, 30, "NYY", "walk"),
+        # batter 40 (BOS): old BIP baseline, recent PAs but ZERO recent BIP
+        # → FORM arrow must be NULL, not '→' (regression: gate finding #2)
+        _pa("2023-08-20", 4, 40, "BOS", "field_out", ls=90.0, la=20.0,
+            xwoba=0.50, bb_type="fly_ball", spray=0.0),
+        _pa("2024-06-05", 4, 40, "BOS", "strikeout"),
+        # batter 50: traded — BOS on 06-01, NYY on 06-05 → must appear only
+        # on NYY's side (regression: gate finding #3)
+        _pa("2024-06-01", 9, 50, "BOS", "single", ls=91.0, la=9.0,
+            xwoba=0.60, bb_type="ground_ball", spray=-5.0),
+        _pa("2024-06-05", 9, 50, "NYY", "single", ls=92.0, la=11.0,
+            xwoba=0.62, bb_type="line_drive", spray=-3.0),
     ]
     pitches = (
         [_pitch("2024-06-01", 10, "swinging_strike")] * 3
@@ -174,3 +192,33 @@ class TestMatchupWiring:
     def test_bad_slate_date_rejected(self, con):
         with pytest.raises(ValueError):
             build_matchup_board(con, "2024-06-10'; DROP TABLE pitches;--")
+
+    def test_missing_batter_game_rolling_tolerated(self, con):
+        """Standalone board build against a fresh silver DB: slot is NULL,
+        board still renders (regression: gate finding #4)."""
+        con.execute("DROP TABLE batter_game_rolling")
+        df = build_matchup_board(con, SLATE)
+        assert len(df) > 0
+        assert df["recent_slot"].isna().all()
+
+
+class TestGateRegressions:
+
+    def test_xwoba_denominator_includes_sac_fly(self, con):
+        """single(.9) + sac_fly(.9) + walk → (0.9+0.9+0.69)/(1 AB+1 BB+1 SF)."""
+        df = build_matchup_board(con, SLATE)
+        row = df[df["batter_id"] == 30].iloc[0]
+        assert row["xwoba_365d"] == pytest.approx((0.9 + 0.9 + 0.69) / 3, abs=1e-3)
+
+    def test_form_arrow_null_without_recent_bip(self, con):
+        df = build_matchup_board(con, SLATE)
+        row = df[df["batter_id"] == 40].iloc[0]
+        assert pd.isna(row["form_arrow"])
+        assert pd.isna(row["form_pct"])
+
+    def test_traded_player_only_on_latest_team(self, con):
+        df = build_matchup_board(con, SLATE)
+        rows = df[df["batter_id"] == 50]
+        assert len(rows) == 1
+        assert rows.iloc[0]["batter_team"] == "NYY"
+        assert rows.iloc[0]["opp_starter_id"] == 91   # faces BOS's probable
