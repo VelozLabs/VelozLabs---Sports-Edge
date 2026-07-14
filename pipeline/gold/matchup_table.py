@@ -129,10 +129,12 @@ def build_batter_matchup_features(
                 n, hr, hr_rate)
 
     if export_path is not None:
-        export_path.parent.mkdir(parents=True, exist_ok=True)
-        con.execute(f"COPY batter_matchup_features TO '{export_path}' "
-                    f"(FORMAT PARQUET, COMPRESSION SNAPPY)")
-        logger.info("Gold table written: %s", export_path)
+        # Route through the storage seam (pipeline/storage.py) so the same call
+        # site publishes to Supabase when VOSS_STORAGE=supabase. Local backend
+        # writes the identical snappy parquet at the identical path.
+        from pipeline.storage import get_storage
+        df = con.execute("SELECT * FROM batter_matchup_features").df()
+        get_storage().write_parquet(df, export_path)
 
 
 DEFAULT_EXPORT_PATH = GOLD_DIR / "batter_matchup_features.parquet"

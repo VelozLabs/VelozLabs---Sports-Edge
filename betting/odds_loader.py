@@ -33,6 +33,7 @@ import pandas as pd
 import requests
 
 from pipeline.config import BRONZE_DIR
+from pipeline.sports import get_sport
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,9 @@ class OddsSource(ABC):
 
 class TheOddsAPISource(OddsSource):
     BASE_URL = "https://api.the-odds-api.com/v4"
+    # MLB defaults kept as class constants for backward compatibility (the pure
+    # `parse_event_odds_json` falls back to these). Per-instance sport/market are
+    # driven by the sport registry via `sport_key` — see __init__.
     SPORT = "baseball_mlb"
     MARKET = "batter_home_runs"
 
@@ -67,7 +71,12 @@ class TheOddsAPISource(OddsSource):
         quota_floor: int = 25,
         cache_dir: Path | None = None,
         session: requests.Session | None = None,
+        sport_key: str = "mlb",
     ):
+        cfg = get_sport(sport_key)
+        self.sport = cfg.odds_api_sport
+        self.market = cfg.odds_api_market
+        self.side_yes_label = cfg.side_yes_label
         self.api_key = api_key or os.getenv("ODDS_API_KEY", "")
         self.bookmakers = bookmakers
         self.regions = regions
@@ -81,23 +90,24 @@ class TheOddsAPISource(OddsSource):
     def fetch_hr_props(self, slate_date: str) -> pd.DataFrame:
         events = self._get_json(
             slate_date, "events",
-            f"{self.BASE_URL}/sports/{self.SPORT}/events",
+            f"{self.BASE_URL}/sports/{self.sport}/events",
             {"apiKey": self.api_key,
              "commenceTimeFrom": f"{slate_date}T00:00:00Z",
              "commenceTimeTo": f"{slate_date}T23:59:59Z"},
         )
         rows: list[dict[str, Any]] = []
         for event in events:
-            params = {"apiKey": self.api_key, "markets": self.MARKET,
+            params = {"apiKey": self.api_key, "markets": self.market,
                       "regions": self.regions, "oddsFormat": "american"}
             if self.bookmakers:
                 params["bookmakers"] = ",".join(self.bookmakers)
             payload = self._get_json(
                 slate_date, f"odds_{event['id']}",
-                f"{self.BASE_URL}/sports/{self.SPORT}/events/{event['id']}/odds",
+                f"{self.BASE_URL}/sports/{self.sport}/events/{event['id']}/odds",
                 params,
             )
-            rows.extend(parse_event_odds_json(payload))
+            rows.extend(parse_event_odds_json(payload, market=self.market,
+                                              side_yes_label=self.side_yes_label))
 
         df = pd.DataFrame(rows, columns=[c for c in PROP_COLUMNS
                                          if c not in ("snapshot_ts", "slate_date")])
@@ -134,18 +144,26 @@ class TheOddsAPISource(OddsSource):
         return resp.json()
 
 
-def parse_event_odds_json(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def parse_event_odds_json(
+    payload: dict[str, Any],
+    market: str | None = None,
+    side_yes_label: str = "Over",
+) -> list[dict[str, Any]]:
     """
     Flatten one event-odds payload to quote rows. Pure function.
-    The Odds API encodes HR props as Over/Under 0.5 with the player in
-    `description`; Over 0.5 == "Yes, hits a HR".
+    The Odds API encodes over/under props with the player in `description`;
+    the `side_yes_label` outcome (default 'Over', e.g. Over 0.5 HR) == "Yes".
+
+    `market` defaults to the MLB class constant so existing MLB call sites and
+    fixtures keep working; per-sport callers pass their configured market.
     """
+    market = market or TheOddsAPISource.MARKET
     rows = []
     for bm in payload.get("bookmakers", []):
-        for market in bm.get("markets", []):
-            if market.get("key") != TheOddsAPISource.MARKET:
+        for mkt in bm.get("markets", []):
+            if mkt.get("key") != market:
                 continue
-            for outcome in market.get("outcomes", []):
+            for outcome in mkt.get("outcomes", []):
                 rows.append({
                     "event_id": payload.get("id"),
                     "commence_time": payload.get("commence_time"),
@@ -153,7 +171,7 @@ def parse_event_odds_json(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     "away_team": payload.get("away_team"),
                     "book": bm.get("key"),
                     "player_name": outcome.get("description"),
-                    "side": "Yes" if outcome.get("name") == "Over" else "No",
+                    "side": "Yes" if outcome.get("name") == side_yes_label else "No",
                     "american": outcome.get("price"),
                 })
     return rows

@@ -37,16 +37,24 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 # ── Demo mode (set DEMO_MODE=1 to skip live API calls) ──────────────────────────
 DEMO_MODE = os.getenv("DEMO_MODE", "0") == "1"
 
-# ── League averages (2024 Statcast baseline) ─────────────────────────────────────
-LEAGUE_AVG = {
-    "csw_rate":            0.281,
-    "whiff_rate":          0.254,
-    "barrel_rate":         0.078,
-    "avg_xwoba":           0.312,
-    "avg_exit_velo":       88.5,
-    "zone_rate":           0.475,
-    "chase_rate":          0.295,
-}
+# ── Storage backend selector (see pipeline/storage.py) ──────────────────────────
+#   'local'    → LocalParquetBackend (default; offline, tests + demo)
+#   'supabase' → SupabaseBackend (publish Gold to Supabase Postgres)
+VOSS_STORAGE = os.getenv("VOSS_STORAGE", "local")
+
+# League-average baselines moved to pipeline.sports.SportConfig.league_avg — they
+# are per-sport, not global. Import via `pipeline.sports.get_sport(sport).league_avg`.
+
+
+def gold_export_path(sport_key: str, filename: str) -> Path:
+    """Sport-scoped Gold parquet path: data/gold/<sport>/<filename>.
+
+    Keeps each sport's Gold artifacts isolated so a new sport needs no path
+    surgery. MLB's historical flat path (data/gold/<file>) is still readable by
+    callers that pass their own explicit path.
+    """
+    return GOLD_DIR / sport_key / filename
+
 
 # ── Ensure directories exist on import ──────────────────────────────────────────
 for _dir in [BRONZE_DIR, SILVER_DIR, GOLD_DIR, MODELS_DIR, REPORTS_DIR]:
