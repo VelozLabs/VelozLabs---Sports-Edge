@@ -109,21 +109,29 @@ class SupabaseBackend(StorageBackend):
     def publish_table(
         self, df: "pd.DataFrame", table: str, natural_key: list[str], sport: str
     ) -> int:
-        self._ensure_attached()
-        self._con.register("_stage", df)
-        cols = list(df.columns)
-        collist = ", ".join(cols)
-        setlist = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols if c not in natural_key)
-        keylist = ", ".join(natural_key)
-        # `updated_at` is always refreshed on conflict (audit column).
-        set_clause = f"{setlist}, updated_at = now()" if setlist else "updated_at = now()"
-        self._con.execute(
-            f"INSERT INTO pg.{table} ({collist}) SELECT {collist} FROM _stage "
-            f"ON CONFLICT ({keylist}) DO UPDATE SET {set_clause}"
-        )
-        self._con.unregister("_stage")
+        from pipeline.notify import PUBLISH_FAILED, PUBLISH_OK, notify_error, notify_info
+        try:
+            self._ensure_attached()
+            self._con.register("_stage", df)
+            cols = list(df.columns)
+            collist = ", ".join(cols)
+            setlist = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols if c not in natural_key)
+            keylist = ", ".join(natural_key)
+            # `updated_at` is always refreshed on conflict (audit column).
+            set_clause = f"{setlist}, updated_at = now()" if setlist else "updated_at = now()"
+            self._con.execute(
+                f"INSERT INTO pg.{table} ({collist}) SELECT {collist} FROM _stage "
+                f"ON CONFLICT ({keylist}) DO UPDATE SET {set_clause}"
+            )
+            self._con.unregister("_stage")
+        except Exception as exc:                       # observability: never fail silently
+            notify_error(PUBLISH_FAILED, f"Publish failed: {table}",
+                         str(exc), sport=sport, table=table)
+            raise
         n = len(df)
         logger.info("Published %d rows → Supabase %s (sport=%s)", n, table, sport)
+        notify_info(PUBLISH_OK, f"Published {table}", f"{n} rows",
+                    sport=sport, table=table, rows=n)
         return n
 
 

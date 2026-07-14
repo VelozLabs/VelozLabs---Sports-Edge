@@ -127,6 +127,12 @@ class TheOddsAPISource(OddsSource):
             return json.loads(cache_path.read_text())
 
         if self.remaining_quota is not None and self.remaining_quota <= self.quota_floor:
+            from pipeline.notify import QUOTA_FLOOR, notify_warn
+            notify_warn(
+                QUOTA_FLOOR, "Odds API quota floor reached",
+                f"Remaining {self.remaining_quota} ≤ floor {self.quota_floor}; halting spend.",
+                remaining=self.remaining_quota, floor=self.quota_floor,
+            )
             raise QuotaFloorReached(
                 f"Remaining quota {self.remaining_quota} at/below floor "
                 f"{self.quota_floor}; refusing to spend more"

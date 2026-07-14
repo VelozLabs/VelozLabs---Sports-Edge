@@ -1,0 +1,97 @@
+name: daily-slate
+
+# Daily Voss Edge slate build → publish to Supabase.
+# Runs the heavy pipeline on free GitHub Actions compute (DuckDB transforms,
+# pybaseball ingest), then publishes Gold to Supabase Postgres. The daily run
+# also doubles as the Supabase free-tier 7-day auto-pause KEEP-ALIVE.
+#
+# NOTE: `schedule` only fires on the repo's DEFAULT branch, so this is inert on
+# the feature branch until merged. Use workflow_dispatch to test on a branch.
+
+on:
+  schedule:
+    # 13:15 UTC ≈ 09:15 ET — after MLB probable starters are firm, before lineups.
+    - cron: "15 13 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Slate date (YYYY-MM-DD); defaults to today (UTC)"
+        required: false
+        type: string
+      sport:
+        description: "Sport key (mlb|nfl|cfb)"
+        required: false
+        default: "mlb"
+        type: string
+
+concurrency:
+  group: daily-slate-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VOSS_STORAGE: supabase
+      VOSS_NOTIFY: multi                      # log + Discord
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      # Deferred/out-of-scope this pass — safe to leave unset (DEMO_MODE gates them):
+      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Resolve slate date + sport
+        id: cfg
+        run: |
+          DATE="${{ github.event.inputs.date }}"
+          [ -z "$DATE" ] && DATE="$(date -u +%F)"
+          SPORT="${{ github.event.inputs.sport }}"
+          [ -z "$SPORT" ] && SPORT="mlb"
+          echo "date=$DATE"   >> "$GITHUB_OUTPUT"
+          echo "sport=$SPORT" >> "$GITHUB_OUTPUT"
+          echo "Slate: $SPORT $DATE"
+
+      - name: Build slate (DuckDB transform → Gold)
+        run: |
+          make slate DATE=${{ steps.cfg.outputs.date }}
+          make score-hr DATE=${{ steps.cfg.outputs.date }}
+
+      - name: Publish Gold → Supabase (+ keep-alive)
+        # Added during the serving-cutover task (pipeline/publish_slate.py wires
+        # pipeline/publish.py into the orchestrator). Guarded on the secret so the
+        # workflow is a safe no-op until Supabase is configured.
+        if: ${{ env.SUPABASE_DB_URL != '' }}
+        run: |
+          python -m pipeline.publish_slate \
+            --sport ${{ steps.cfg.outputs.sport }} \
+            --date  ${{ steps.cfg.outputs.date }}
+
+      - name: Notify success (Discord)
+        if: ${{ success() && env.DISCORD_WEBHOOK_URL != '' }}
+        run: |
+          curl -sS -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"✅ Slate published\",\"description\":\"${{ steps.cfg.outputs.sport }} ${{ steps.cfg.outputs.date }}\",\"color\":3066993}]}" \
+            "$DISCORD_WEBHOOK_URL" || true
+
+      - name: Notify failure (Discord)
+        if: ${{ failure() && env.DISCORD_WEBHOOK_URL != '' }}
+        run: |
+          curl -sS -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"🚨 Daily slate FAILED\",\"description\":\"${{ steps.cfg.outputs.sport }} ${{ steps.cfg.outputs.date }} — run ${{ github.run_id }}\",\"color\":15158332}]}" \
+            "$DISCORD_WEBHOOK_URL" || true
