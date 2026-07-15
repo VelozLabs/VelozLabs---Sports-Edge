@@ -267,3 +267,19 @@ INSERT INTO source (source_root, sport, layer, is_night_before, description) VAL
     ('collegefootballdata', 'cfb', 'bronze', false, 'CollegeFootballData (CFBD) pbp/rosters/venues/schedule'),
     ('duckdb_gold_publish', NULL,  'gold',   false, 'DuckDB Gold layer published to Supabase'),
     ('the_odds_api',        NULL,  'market', false, 'The Odds API player-prop lines');
+
+-- ── Row-Level Security ───────────────────────────────────────────────────────
+-- Enable RLS on every core table with NO policies: the anon/authenticated roles
+-- (Supabase client libs / publishable key) can touch nothing. The pipeline and a
+-- server-side dashboard connect via the service-role pooler, which BYPASSES RLS.
+-- (User decision; the two pre-existing tables picks/odds_snapshots are left as-is.)
+ALTER TABLE sport            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE source           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entity           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prop             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prop_price       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bet              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE result           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lineup_confirmed ENABLE ROW LEVEL SECURITY;
+ALTER TABLE layer_score      ENABLE ROW LEVEL SECURITY;
