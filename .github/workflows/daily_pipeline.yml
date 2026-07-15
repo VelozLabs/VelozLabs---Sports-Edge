@@ -38,7 +38,7 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pybaseball duckdb xgboost scikit-learn shap numpy
+        run: pip install -r requirements.txt python-dotenv pybaseball duckdb xgboost scikit-learn shap numpy
 
       - name: Determine target date
         id: date
