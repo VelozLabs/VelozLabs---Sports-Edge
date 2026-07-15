@@ -10,9 +10,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ModuleNotFoundError:
+    # python-dotenv only loads a local .env for dev convenience; in CI/prod the
+    # runner supplies env vars directly. A missing dev dep must never crash the
+    # whole pipeline at import time.
+    pass
 
 # ── Project root ────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
