@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaseballIQ - Betting Stats Dashboard</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- DataTables for fast, client-side sorting -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --surface-color: #1a1d24;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --border: #2d3748;
+            
+            --tier-elite: #10b981;
+            --tier-above: #3b82f6;
+            --tier-avg: #fbbf24;
+            --tier-below: #f97316;
+            --tier-poor: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        
+        .accent-text {
+            color: var(--accent);
+        }
+
+        .date-badge {
+            background-color: var(--surface-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto; /* Allow horizontal scroll on mobile */
+        }
+
+        /* DataTables Dark Theme Overrides */
+        table.dataTable {
+            width: 100% !important;
+            border-collapse: collapse;
+            color: var(--text-main);
+        }
+
+        table.dataTable thead th {
+            border-bottom: 2px solid var(--border);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 10px;
+        }
+
+        table.dataTable tbody td {
+            padding: 14px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        table.dataTable.no-footer {
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Hover effect */
+        table.dataTable tbody tr.hover, table.dataTable tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        /* DataTables Controls (Search, Pagination) */
+        .dataTables_wrapper .dataTables_length, 
+        .dataTables_wrapper .dataTables_filter, 
+        .dataTables_wrapper .dataTables_info, 
+        .dataTables_wrapper .dataTables_processing, 
+        .dataTables_wrapper .dataTables_paginate {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-main);
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+
+        /* Custom cell formatting */
+        .pitcher-name {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .tier-elite     { background: rgba(16, 185, 129, 0.15); color: var(--tier-elite); }
+        .tier-above_avg { background: rgba(59, 130, 246, 0.15); color: var(--tier-above); }
+        .tier-average   { background: rgba(251, 191, 36, 0.15); color: var(--tier-avg); }
+        .tier-below_avg { background: rgba(249, 115, 22, 0.15); color: var(--tier-below); }
+        .tier-poor      { background: rgba(239, 68, 68, 0.15); color: var(--tier-poor); }
+
+        .positive-delta { color: var(--tier-elite); font-weight: 500; }
+        .negative-delta { color: var(--tier-poor); font-weight: 500; }
+
+        .ai-tooltip-container {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dashed var(--text-muted);
+            color: var(--text-muted);
+        }
+        
+        .ai-tooltip-container:hover {
+            color: var(--text-main);
+            border-bottom-color: var(--text-main);
+        }
+        
+        .ai-tooltip {
+            visibility: hidden;
+            background-color: #2d3748;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            right: 0;
+            width: 300px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .ai-tooltip-container:hover .ai-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .concern-flag {
+            color: #ef4444;
+            font-weight: 600;
+            margin-top: 6px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Baseball<span class="accent-text">IQ</span> <span style="font-weight: 400; color: var(--text-muted); font-size: 20px;">| Betting Dashboard</span></h1>
+        <div class="date-badge">Latest Data: <strong>{{ latest_date }}</strong></div>
+    </header>
+
+    <div class="card">
+        <table id="pitcherTable" class="display">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Pitcher</th>
+                    <th>Tier</th>
+                    <th>Pitches</th>
+                    <th>CSW %</th>
+                    <th>Whiff %</th>
+                    <th>Avg Velo (mph)</th>
+                    <th>Velo Delta (vs 30d)</th>
+                    <th>xwOBA Allowed</th>
+                    <th>AI Analysis</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pitchers %}
+                <tr>
+                    <td class="pitcher-name">{{ p.Pitcher }}</td>
+                    <td style="text-align: center;">
+                        <span class="tier-badge tier-{{ p.Tier }}">{{ p.Tier.replace('_', ' ') }}</span>
+                    </td>
+                    <td style="text-align: center;">{{ p.Pitches }}</td>
+                    
+                    <td style="text-align: center; font-weight: 600; {% if p.CSW_Pct >= 30.0 %}color: var(--tier-elite){% endif %}">
+                        {{ p.CSW_Pct }}%
+                    </td>
+                    
+                    <td style="text-align: center;">{{ p.Whiff_Pct }}%</td>
+                    <td style="text-align: center;">{{ p.Avg_Velo_mph }}</td>
+                    
+                    <td style="text-align: center;">
+                        {% if p.Velo_Delta > 0.3 %}
+                            <span class="positive-delta">+{{ p.Velo_Delta }}</span>
+                        {% elif p.Velo_Delta < -0.3 %}
+                            <span class="negative-delta">{{ p.Velo_Delta }}</span>
+                        {% else %}
+                            <span style="color: var(--text-muted)">{{ ("%.1f"|format(p.Velo_Delta)) if p.Velo_Delta else "0.0" }}</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td style="text-align: center;">
+                        .{{ ("%.3f"|format(p.xwOBA_Allowed)).split('.')[1] }}
+                    </td>
+                    
+                    <td style="text-align: center;">
+                        {% if p.AI_Analysis %}
+                        <div class="ai-tooltip-container">
+                            View Insight
+                            <div class="ai-tooltip">
+                                <strong>{{ p.AI_Analysis.headline }}</strong>
+                                <p style="margin: 8px 0;">{{ p.AI_Analysis.key_finding }}</p>
+                                {% if p.AI_Analysis.concern_flag %}
+                                    <span class="concern-flag">⚠ {{ p.AI_Analysis.concern_flag }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <span style="color: var(--border)">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- jQuery (Required for DataTables) -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        $('#pitcherTable').DataTable({
+            "pageLength": 50,
+            "order": [[ 3, "desc" ]], // Order by CSW % descending by default
+            "language": {
+                "search": "Filter pitchers:"
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

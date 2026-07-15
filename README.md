@@ -4,7 +4,7 @@
 [![Streamlit](https://img.shields.io/badge/streamlit-1.35-ff4b4b.svg)](https://streamlit.io)
 [![DuckDB](https://img.shields.io/badge/DuckDB-0.10-yellow.svg)](https://duckdb.org/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-2.0-orange.svg)](https://xgboost.readthedocs.io/)
-[![Claude API](https://img.shields.io/badge/Claude-Sonnet-black.svg)](https://anthropic.com)
+[![Gemini API](https://img.shields.io/badge/Gemini-2.0_Flash-4285F4.svg)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > A portfolio-grade sports analytics system demonstrating production data engineering, machine learning, and LLM integration on MLB Statcast data.
@@ -15,7 +15,7 @@
 
 ## What This Is
 
-BaseballIQ is an end-to-end MLB analytics platform built to demonstrate what a modern sports analytics engineering team would realistically ship. It ingests pitch-by-pitch Statcast data, processes it through a Bronze/Silver/Gold medallion architecture, trains a predictive model for pitcher effectiveness (CSW rate), and surfaces results through an AI-powered scouting report system backed by Claude.
+BaseballIQ is an end-to-end MLB analytics platform built to demonstrate what a modern sports analytics engineering team would realistically ship. It ingests pitch-by-pitch Statcast data, processes it through a Bronze/Silver/Gold medallion architecture, trains a predictive model for pitcher effectiveness (CSW rate), and surfaces results through an AI-powered scouting report system backed by Google Gemini.
 
 This is not a tutorial project. Every architectural decision from using DuckDB over Pandas for the analytical layer, to doing time-series cross-validation for the ML model, to positioning the LLM after all statistics are computed, reflects real production engineering judgment.
 
@@ -41,7 +41,7 @@ GOLD (Parquet)         pitcher_game_summary · batter_game_summary
         |                       |
         v                       v
   XGBoost Model          LLM Enrichment
-  CSW prediction         Claude: narratives,
+  CSW prediction         Gemini: narratives,
   + SHAP values          anomaly detection
         |                       |
         +-----------+-----------+
@@ -67,34 +67,39 @@ Called strikes + whiffs / total pitches is the strongest single-game pitcher qua
 Standard k-fold shuffles the data, allowing the model to train on future games. In production, you never have future data. TimeSeriesSplit preserves temporal ordering each validation fold is strictly after its training fold. This is the most common ML leakage mistake in sports analytics portfolios.
 
 **Why LLM as a layer, not the core?**
-The LLM receives fully-computed statistics and writes narrative around them. It never computes numbers. This makes the system auditable (every stat is verifiable), testable (outputs do not change if the LLM is replaced), and cost-efficient (one API call per report, not per calculation).
+The LLM receives fully-computed statistics and writes narrative around them. It never computes numbers. This makes the system auditable (every stat is verifiable), testable (outputs do not change if the LLM is replaced), and cost-efficient (one API call per report, not per calculation). Powered by Google Gemini 2.0 Flash (free tier — no cost for personal use).
 
 ---
 
 ## Project Structure
 
 ```
-baseballiq/
+baseballiq-test/
 ├── data/
-│   ├── bronze/           Raw Parquet, partitioned by game_date
-│   ├── silver/           DuckDB analytical database
-│   └── gold/             Aggregated Parquet (checked into repo for demo)
+│   └── gold/                Aggregated Parquet + JSON (checked into repo for demo)
 │       ├── pitcher_game_summary.parquet
 │       ├── batter_game_summary.parquet
+│       ├── players.parquet
 │       └── llm_insights.json
 ├── pipeline/
-│   ├── ingestion/        statcast_ingestion.py
-│   ├── silver/           cleaning.py, feature_engineering.py
-│   └── gold/             aggregations.py
-├── enrichment/           llm_client.py, prompt_templates.py
-├── models/               train.py, evaluate.py, predict.py
-├── reports/              scouting_report.py
-├── dashboard/            app.py (Streamlit, 4 pages)
-├── tests/
-├── generate_demo_data.py
-├── Makefile
-├── .streamlit/           Streamlit configuration
-└── pyproject.toml
+│   ├── config.py            Paths, constants, env vars
+│   ├── orchestrator.py      End-to-end pipeline runner
+│   ├── ingestion/           statcast_ingestion.py
+│   ├── silver/              cleaning.py, feature_engineering.py
+│   └── gold/                aggregations.py
+├── enrichment/              llm_enrichment.py (client + writer + prompts)
+├── models/
+│   ├── train.py             XGBoost training + SHAP + time-series CV
+│   ├── predict.py           Inference wrapper
+│   └── artifacts/           Saved model files
+├── reports/                 scouting_report.py (assembly + text renderer)
+├── dashboard/               app.py (Streamlit, 4 views in single file)
+├── tests/                   test_pipeline.py
+├── generate_demo_data.py    Synthetic Statcast data generator
+├── Makefile                 Pipeline task runner
+├── pyproject.toml
+├── .streamlit/              Streamlit configuration
+└── .env.example             API keys template
 ```
 
 ---
@@ -104,8 +109,8 @@ baseballiq/
 The fastest way to explore BaseballIQ is through the Streamlit dashboard. The repo includes pre-generated demo data in `data/gold/`, so visitors can run the app without API keys or a full data pipeline.
 
 ```bash
-git clone https://github.com/ivanrivasgr/baseballiq
-cd baseballiq
+git clone https://github.com/VelozLabs/baseballiq-test.git
+cd baseballiq-test
 pip install -r requirements.txt
 streamlit run dashboard/app.py
 ```
@@ -125,8 +130,8 @@ The dashboard uses cached synthetic Statcast-style data and cached LLM-style ins
 **Option A: Dashboard demo**
 
 ```bash
-git clone https://github.com/ivanrivasgr/baseballiq
-cd baseballiq
+git clone https://github.com/VelozLabs/baseballiq-test.git
+cd baseballiq-test
 pip install -r requirements.txt
 streamlit run dashboard/app.py
 ```
@@ -137,7 +142,7 @@ The demo uses pre-generated synthetic Statcast data included in `data/gold/`. No
 
 ```bash
 cp .env.example .env
-# Add ANTHROPIC_API_KEY to .env
+# Add GEMINI_API_KEY to .env (free at https://aistudio.google.com/apikey)
 
 make ingest DATE_START=2024-07-01 DATE_END=2024-07-07
 make clean && make gold
@@ -159,7 +164,7 @@ This project is designed to be shared through Streamlit Community Cloud.
 4. Set the app file to `dashboard/app.py`
 5. Deploy
 
-No secrets are required for the demo dashboard because the repo includes cached data in `data/gold/`. Add `ANTHROPIC_API_KEY` only if you want to regenerate live LLM scouting insights.
+No secrets are required for the demo dashboard because the repo includes cached data in `data/gold/`. Add `GEMINI_API_KEY` only if you want to regenerate live LLM scouting insights (free tier — no cost).
 
 ---
 
@@ -175,6 +180,9 @@ No secrets are required for the demo dashboard because the repo includes cached 
 - `stuff_diversity` — pitch mix entropy
 - `zone_rate`, `chase_rate` — command metrics
 - `barrel_rate_allowed`, `avg_xwoba_allowed` — contact quality
+- `avg_spin`, `avg_h_break`, `avg_v_break` — pitch movement
+- `total_pitches` — workload proxy
+- `home_away` — home/away context
 
 **Model:** XGBoost Regressor
 **Validation:** 5-fold TimeSeriesSplit (no leakage)
@@ -236,11 +244,31 @@ MLB Statcast via [pybaseball](https://github.com/jldbc/pybaseball) - free, publi
 | Analytical engine | DuckDB 0.10 |
 | Feature engineering | DuckDB SQL window functions |
 | ML model | XGBoost + SHAP |
-| LLM enrichment | Anthropic Claude (claude-sonnet) |
+| LLM enrichment | Google Gemini 2.0 Flash (free tier) |
 | Dashboard | Streamlit + Plotly |
 | Task runner | GNU Make |
 | Testing | pytest |
 | Deployment | Streamlit Community Cloud |
+
+---
+
+## Development Status
+
+| Component | Status |
+|---|---|
+| Gold-layer data (pitcher + batter summaries) | ✅ Complete |
+| Streamlit dashboard (4-view monolith) | ✅ Complete |
+| XGBoost training + SHAP explainability | ✅ Complete |
+| LLM enrichment (Gemini-backed) | ✅ Complete |
+| Scouting report engine | ✅ Complete |
+| Pipeline orchestrator | ✅ Complete |
+| Statcast ingestion (Bronze) | ✅ Complete |
+| Silver layer (cleaning + feature eng.) | ✅ Complete |
+| Demo data generator | ✅ Complete |
+| Test suite | ✅ Basic (data validation + unit tests) |
+| CI/CD (GitHub Actions) | 🔲 Planned |
+| Multi-page dashboard refactor | 🔲 Planned |
+| Gemini model support | ✅ Complete |
 
 ---
 

@@ -32,7 +32,7 @@ MODEL_PATH    = MODELS_DIR / "pitcher_effectiveness_v1.pkl"
 REPORTS_DIR = PROJECT_ROOT / "reports" / "output"
 
 # ── API keys ────────────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ── Demo mode (set DEMO_MODE=1 to skip live API calls) ──────────────────────────
 DEMO_MODE = os.getenv("DEMO_MODE", "0") == "1"

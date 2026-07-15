@@ -85,7 +85,7 @@ setup:
 	uv sync
 	cp -n .env.example .env || true
 	mkdir -p data/bronze data/silver data/gold models/artifacts reports/output
-	@echo "✅ Environment ready. Add your ANTHROPIC_API_KEY to .env"
+	@echo "✅ Environment ready. Add your GEMINI_API_KEY to .env"
 
 ## Run sample pipeline on included demo data (no API key needed)
 demo:

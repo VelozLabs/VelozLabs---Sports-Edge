@@ -1,0 +1,93 @@
+# BaseballIQ — Daily Pipeline Automation
+# ========================================
+# Runs daily at 10:00 UTC (6 AM ET) during baseball season.
+# Ingests yesterday's Statcast data, rebuilds Gold layer,
+# generates Gemini LLM insights, and commits updated data.
+#
+# Manual trigger: GitHub repo → Actions tab → Run workflow
+
+name: Daily Pipeline
+
+on:
+  schedule:
+    # 10:00 UTC = 6:00 AM ET — after all West Coast games are final
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      date_override:
+        description: 'Override date (YYYY-MM-DD). Leave blank for yesterday.'
+        required: false
+        type: string
+
+permissions:
+  contents: write    # needed to push data commits back to repo
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pybaseball duckdb xgboost scikit-learn shap numpy
+
+      - name: Determine target date
+        id: date
+        run: |
+          if [ -n "${{ inputs.date_override }}" ]; then
+            echo "TARGET_DATE=${{ inputs.date_override }}" >> $GITHUB_OUTPUT
+          else
+            echo "TARGET_DATE=$(date -d 'yesterday' +%F)" >> $GITHUB_OUTPUT
+          fi
+          echo "Pipeline target date: $(cat $GITHUB_OUTPUT)"
+
+      - name: Ingest Statcast data (Bronze)
+        run: |
+          python -m pipeline.ingestion.statcast_ingestion \
+            --start ${{ steps.date.outputs.TARGET_DATE }} \
+            --end   ${{ steps.date.outputs.TARGET_DATE }}
+        env:
+          PYTHONPATH: .
+
+      - name: Clean and build Silver layer
+        run: |
+          python -m pipeline.silver.cleaning
+          python -m pipeline.silver.feature_engineering
+        env:
+          PYTHONPATH: .
+
+      - name: Build Gold analytical datasets
+        run: python -m pipeline.gold.aggregations
+        env:
+          PYTHONPATH: .
+
+      - name: Generate Gemini LLM insights
+        run: |
+          python -m enrichment.llm_enrichment \
+            --date ${{ steps.date.outputs.TARGET_DATE }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PYTHONPATH: .
+
+      - name: Regenerate demo data (update Gold Parquet + JSON)
+        run: python generate_demo_data.py
+        env:
+          PYTHONPATH: .
+
+      - name: Commit and push updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/gold/ || true
+          git diff --cached --quiet && echo "No data changes" && exit 0
+          git commit -m "data: daily refresh ${{ steps.date.outputs.TARGET_DATE }}"
+          git push

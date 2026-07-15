@@ -6,14 +6,14 @@ Deployable on Streamlit Community Cloud (free tier).
 
 Architecture:
 - Loads pre-generated Parquet/JSON from data/gold/
-- LLM reports generated on-demand via Anthropic API (st.secrets)
+- LLM reports generated on-demand via Gemini API (st.secrets)
 - No database required at runtime — pure Parquet + pandas
 - ~300MB memory footprint (well within 1GB free tier limit)
 
 Deploy:
     1. Push repo to GitHub (include data/gold/ files)
     2. Go to share.streamlit.io → New app → select repo
-    3. Add ANTHROPIC_API_KEY in app Settings → Secrets
+    3. Add GEMINI_API_KEY in app Settings → Secrets
     4. Deploy ✓
 """
 
@@ -21,7 +21,8 @@ import json
 import os
 from pathlib import Path
 
-import anthropic
+from google import genai
+from google.genai import types
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -922,18 +923,18 @@ elif page == "📋 Scouting Reports":
             st.info("No cached report for this game. Generate a live report using the API tab.")
 
     with tab_live:
-        st.caption("Calls Claude API in real time. Add ANTHROPIC_API_KEY to Streamlit secrets to enable.")
+        st.caption("Calls Gemini API in real time. Add GEMINI_API_KEY to Streamlit secrets to enable.")
 
         if st.button("⚡ Generate AI Report", type="primary"):
             try:
-                api_key = st.secrets["ANTHROPIC_API_KEY"]
+                api_key = st.secrets["GEMINI_API_KEY"]
             except Exception:
-                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                api_key = os.environ.get("GEMINI_API_KEY", "")
 
             if not api_key:
-                st.error("No API key found. Add ANTHROPIC_API_KEY to .streamlit/secrets.toml or Streamlit Cloud secrets.")
+                st.error("No API key found. Add GEMINI_API_KEY to .streamlit/secrets.toml or Streamlit Cloud secrets.")
             else:
-                with st.spinner("Calling Claude..."):
+                with st.spinner("Calling Gemini..."):
                     prompt = f"""You are a baseball analyst for an MLB front office.
 
 Pitcher: {sel_pitcher}
@@ -957,13 +958,16 @@ Respond ONLY with valid JSON (no markdown):
 {{"headline": "<15 words max>", "key_finding": "<2-3 analytical sentences>", "concern_flag": null or "<one sentence>", "pitch_mix_note": null or "<one sentence>"}}"""
 
                     try:
-                        client   = anthropic.Anthropic(api_key=api_key)
-                        response = client.messages.create(
-                            model="claude-sonnet-4-20250514",
-                            max_tokens=600,
-                            messages=[{"role": "user", "content": prompt}],
+                        client   = genai.Client(api_key=api_key)
+                        response = client.models.generate_content(
+                            model="gemini-2.0-flash",
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                max_output_tokens=600,
+                                response_mime_type="application/json",
+                            ),
                         )
-                        result = json.loads(response.content[0].text.strip())
+                        result = json.loads(response.text.strip())
 
                         st.markdown(f"""
                         <div class="report-block">

@@ -2,7 +2,7 @@
 enrichment/llm_client.py  +  enrichment/insight_writer.py
 ==========================================================
 LLM Enrichment Layer — generates structured analytical insights
-from Gold-layer statistics using the Anthropic Claude API.
+from Gold-layer statistics using the Google Gemini API.
 
 Design principles:
     - LLM is the LAST step, after all data is computed
@@ -19,9 +19,10 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-import anthropic
 import duckdb
 import pandas as pd
+from google import genai
+from google.genai import types
 
 from pipeline.config import DUCKDB_PATH, GOLD_DIR
 
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # ─── Constants ─────────────────────────────────────────────────────────────────
 
-MODEL         = "claude-sonnet-4-20250514"
+MODEL         = "gemini-2.0-flash"
 MAX_TOKENS    = 600
 RATE_LIMIT_S  = 0.5    # seconds between API calls (respect rate limits)
 
@@ -129,36 +130,41 @@ class InsightResult:
 
 
 class LLMClient:
-    """Thin wrapper around Anthropic client with retry + rate limiting."""
+    """Thin wrapper around Google Gemini client with retry + rate limiting."""
 
     def __init__(self) -> None:
-        self.client = anthropic.Anthropic()   # reads ANTHROPIC_API_KEY from env
+        self.client = genai.Client()   # reads GEMINI_API_KEY from env (or GOOGLE_API_KEY)
 
     def generate(self, prompt: str, insight_type: str) -> dict[str, Any]:
-        """Call Claude API and return parsed JSON response."""
+        """Call Gemini API and return parsed JSON response."""
         time.sleep(RATE_LIMIT_S)
 
         for attempt in range(3):
             try:
-                message = self.client.messages.create(
+                response = self.client.models.generate_content(
                     model=MODEL,
-                    max_tokens=MAX_TOKENS,
-                    messages=[{"role": "user", "content": prompt}],
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        max_output_tokens=MAX_TOKENS,
+                        response_mime_type="application/json",
+                    ),
                 )
-                raw_text = message.content[0].text.strip()
+                raw_text = response.text.strip()
                 return json.loads(raw_text)
 
             except json.JSONDecodeError as e:
                 logger.warning("JSON parse error (attempt %d): %s", attempt + 1, e)
                 if attempt == 2:
                     return {"error": "json_parse_failed", "raw": raw_text}
-            except anthropic.RateLimitError:
-                wait = 2 ** attempt * 5
-                logger.warning("Rate limit hit — sleeping %ds", wait)
-                time.sleep(wait)
             except Exception as e:
-                logger.error("LLM call failed: %s", e)
-                return {"error": str(e)}
+                error_str = str(e).lower()
+                if "rate" in error_str or "quota" in error_str or "429" in error_str:
+                    wait = 2 ** attempt * 5
+                    logger.warning("Rate limit hit — sleeping %ds", wait)
+                    time.sleep(wait)
+                else:
+                    logger.error("LLM call failed: %s", e)
+                    return {"error": str(e)}
 
         return {"error": "max_retries_exceeded"}
 
