@@ -7,7 +7,7 @@
 [![Gemini API](https://img.shields.io/badge/Gemini-2.0_Flash-4285F4.svg)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> A portfolio-grade sports analytics system demonstrating production data engineering, machine learning, and LLM integration on MLB Statcast data.
+> An end-to-end MLB analytics system combining data engineering, machine learning, and LLM integration on Statcast data.
 
 **[Live Demo](https://baseballiq-aovcjbmgvuzznyck63ajbg.streamlit.app/)** | **[Architecture Doc](ARCHITECTURE.md)** | **Run locally:** `streamlit run dashboard/app.py`
 
@@ -15,9 +15,9 @@
 
 ## What This Is
 
-BaseballIQ is an end-to-end MLB analytics platform built to demonstrate what a modern sports analytics engineering team would realistically ship. It ingests pitch-by-pitch Statcast data, processes it through a Bronze/Silver/Gold medallion architecture, trains a predictive model for pitcher effectiveness (CSW rate), and surfaces results through an AI-powered scouting report system backed by Google Gemini.
+BaseballIQ is an end-to-end MLB analytics platform built on Statcast data. It ingests pitch-by-pitch data, processes it through a Bronze/Silver/Gold medallion architecture, trains a predictive model for pitcher effectiveness (CSW rate), and surfaces results through an AI-powered scouting report system backed by Google Gemini.
 
-This is not a tutorial project. Every architectural decision from using DuckDB over Pandas for the analytical layer, to doing time-series cross-validation for the ML model, to positioning the LLM after all statistics are computed, reflects real production engineering judgment.
+Every architectural decision from using DuckDB over Pandas for the analytical layer, to doing time-series cross-validation for the ML model, to positioning the LLM after all statistics are computed, reflects real production engineering judgment.
 
 ---
 
