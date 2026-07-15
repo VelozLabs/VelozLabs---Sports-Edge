@@ -1,0 +1,576 @@
+<title>Voss Edge — Design System</title>
+<style>
+  :root{
+    color-scheme: light;
+    --paper:#FBFAF7; --panel:#FFFFFF; --panel-2:#F3F1EA;
+    --ink:#14171A; --ink-2:#55585C; --ink-3:#8A8D90;
+    --line:#E5E1D6; --line-2:#D6D1C4;
+    --gold:#B0842A; --gold-soft:#EEE4C7;
+    --chart:#fcfcfb;
+    /* medallion metals — data-layer motif */
+    --bronze:#A9713F; --silver:#8C97A2; --goldm:#B0842A;
+    /* semantic (money) */
+    --pos:#0C8A0C; --neg:#C7362F; --warn:#B07408;
+    /* chart categorical — layers (validated order) */
+    --c-form:#2a78d6; --c-opp:#008300; --c-bull:#d0577f; --c-park:#c07d00; --c-ctx:#1baf7a;
+    /* tier ordinal ramp (blue, light→dark = L1→L5) */
+    --t1:#86b6ef; --t2:#5598e7; --t3:#2a78d6; --t4:#1c5cab; --t5:#0f3f7e;
+    /* status */
+    --st-good:#0ca30c; --st-warn:#B07408; --st-serious:#c85f2f; --st-crit:#C7362F;
+    --radius:10px; --radius-s:7px;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Helvetica Neue",-apple-system,system-ui,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --maxw:1120px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --paper:#0F1215; --panel:#161A1F; --panel-2:#1B2026;
+      --ink:#EDEEEE; --ink-2:#A9AFB5; --ink-3:#6C7278;
+      --line:#262B31; --line-2:#333A41;
+      --gold:#D9AE52; --gold-soft:#332C18;
+      --chart:#1a1a19;
+      --bronze:#C08A54; --silver:#9AA6B2; --goldm:#D9AE52;
+      --pos:#33B54B; --neg:#E06A66; --warn:#E6B450;
+      --c-form:#3987e5; --c-opp:#12a012; --c-bull:#d55181; --c-park:#c98500; --c-ctx:#199e70;
+      --t1:#6da7ec; --t2:#4a8ce0; --t3:#3987e5; --t4:#256abf; --t5:#184f95;
+      --st-good:#26b526; --st-warn:#E6B450; --st-serious:#ec835a; --st-crit:#e05a5a;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:#0F1215; --panel:#161A1F; --panel-2:#1B2026;
+    --ink:#EDEEEE; --ink-2:#A9AFB5; --ink-3:#6C7278;
+    --line:#262B31; --line-2:#333A41;
+    --gold:#D9AE52; --gold-soft:#332C18;
+    --chart:#1a1a19;
+    --bronze:#C08A54; --silver:#9AA6B2; --goldm:#D9AE52;
+    --pos:#33B54B; --neg:#E06A66; --warn:#E6B450;
+    --c-form:#3987e5; --c-opp:#12a012; --c-bull:#d55181; --c-park:#c98500; --c-ctx:#199e70;
+    --t1:#6da7ec; --t2:#4a8ce0; --t3:#3987e5; --t4:#256abf; --t5:#184f95;
+    --st-good:#26b526; --st-warn:#E6B450; --st-serious:#ec835a; --st-crit:#e05a5a;
+  }
+  :root[data-theme="light"]{ color-scheme:light; }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  a{color:inherit}
+  h1,h2,h3,h4{text-wrap:balance;line-height:1.15;margin:0}
+  ::selection{background:var(--gold-soft)}
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+  .muted{color:var(--ink-2)}
+  .faint{color:var(--ink-3)}
+
+  /* ── top bar ─────────────────────────────── */
+  header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%, transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;gap:18px;height:58px}
+  .brand{display:flex;align-items:baseline;gap:10px;font-weight:800;letter-spacing:-.01em}
+  .brand .dia{color:var(--gold);font-size:15px;transform:translateY(-1px)}
+  .brand small{font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+  nav.sect{margin-left:auto;display:flex;gap:2px;flex-wrap:wrap}
+  nav.sect a{font-family:var(--mono);font-size:12px;color:var(--ink-2);text-decoration:none;padding:6px 9px;border-radius:6px}
+  nav.sect a:hover{background:var(--panel-2);color:var(--ink)}
+  .tbtn{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);background:var(--panel);
+    color:var(--ink-2);border-radius:7px;padding:6px 10px;cursor:pointer}
+  .tbtn:hover{border-color:var(--gold);color:var(--ink)}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  /* ── hero ─────────────────────────────── */
+  .hero{padding:76px 0 40px;border-bottom:1px solid var(--line)}
+  .hero h1{font-size:clamp(38px,6vw,68px);font-weight:800;letter-spacing:-.03em}
+  .hero h1 .edge{color:var(--gold)}
+  .hero .lede{max-width:60ch;margin-top:20px;font-size:19px;color:var(--ink-2)}
+  .hero .meta{margin-top:26px;display:flex;gap:22px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+  .hero .meta b{color:var(--ink);font-weight:600}
+
+  section{padding:52px 0;border-bottom:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:26px}
+  .sec-head .no{font-family:var(--mono);font-size:12px;color:var(--gold);letter-spacing:.1em}
+  .sec-head h2{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .sec-head p{margin:6px 0 0;color:var(--ink-2);max-width:66ch}
+
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:820px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .card h4{font-size:14px;font-weight:700;margin-bottom:4px}
+  .card .k{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+  /* ── swatches ─────────────────────────────── */
+  .sw{display:flex;flex-direction:column;gap:8px}
+  .chip{height:52px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
+  :root[data-theme="dark"] .chip,:root:where(:not([data-theme="light"])) .chip{border-color:rgba(255,255,255,.09)}
+  .sw .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .sw .name{font-size:13px;font-weight:600}
+  .sw .hex{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .sw .use{font-size:12px;color:var(--ink-2);line-height:1.4}
+  .ramp{display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+  .ramp span{flex:1;height:46px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;
+    font-family:var(--mono);font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+
+  /* ── type ─────────────────────────────── */
+  .typerow{display:flex;align-items:baseline;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+  .typerow .tag{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:130px;flex:none;letter-spacing:.08em}
+  .scale div{padding:6px 0;border-top:1px solid var(--line)}
+  .scale .s-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+  /* ── components ─────────────────────────────── */
+  .demo{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:14px}
+  .demo .cap{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+  .rowwrap{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  .tier{font-family:var(--mono);font-weight:700;font-size:12px;color:#fff;padding:3px 9px;border-radius:999px;letter-spacing:.04em}
+  .tier.l1{background:var(--t1);color:#0b2447}.tier.l2{background:var(--t2)}.tier.l3{background:var(--t3)}
+  .tier.l4{background:var(--t4)}.tier.l5{background:var(--t5)}
+  .badge{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--line-2);color:var(--ink-2);display:inline-flex;gap:6px;align-items:center}
+  .badge .dot{width:7px;height:7px;border-radius:50%}
+  .badge.two{border-color:color-mix(in srgb,var(--pos) 45%,var(--line-2))}
+  .badge.assumed{border-color:color-mix(in srgb,var(--warn) 55%,var(--line-2));color:var(--warn)}
+  .status{font-family:var(--mono);font-size:12px;display:inline-flex;gap:7px;align-items:center;padding:4px 9px;border-radius:7px;background:var(--panel-2)}
+  .status .ico{font-weight:700}
+  .s-good{color:var(--st-good)}.s-warn{color:var(--st-warn)}.s-crit{color:var(--st-crit)}
+
+  .ev{font-family:var(--mono);font-weight:700;display:inline-flex;gap:4px;align-items:center}
+  .ev.pos{color:var(--pos)}.ev.neg{color:var(--neg)}
+
+  /* KPI tile */
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:6px}
+  .kpi .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .kpi .big{font-family:var(--mono);font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .kpi .sub{font-family:var(--mono);font-size:12px}
+
+  /* table */
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+  table.edge{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+  table.edge th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+    text-align:right;padding:10px 12px;border-bottom:1px solid var(--line-2);position:sticky;top:0;background:var(--panel)}
+  table.edge th:first-child,table.edge td:first-child{text-align:left}
+  table.edge td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);
+    font-variant-numeric:tabular-nums}
+  table.edge td.player{font-family:var(--sans);font-weight:600}
+  table.edge tr:hover td{background:var(--panel-2)}
+
+  .propcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;max-width:420px}
+  .propcard .ph{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start}
+  .propcard .nm{font-weight:700;font-size:17px}.propcard .sub{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+  .propcard .pb{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+  .prow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px}
+  .prow .l{color:var(--ink-3)}
+  .shap{display:flex;flex-direction:column;gap:7px}
+  .shap .sr{display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center;font-family:var(--mono);font-size:11px}
+  .sbar{height:16px;position:relative;background:var(--panel-2);border-radius:3px}
+  .sbar i{position:absolute;top:0;height:100%;border-radius:3px}
+
+  .unpriced{border:1px dashed var(--line-2);border-radius:var(--radius);padding:22px;text-align:center;color:var(--ink-3);
+    font-family:var(--mono);font-size:13px;background:repeating-linear-gradient(135deg,transparent,transparent 8px,var(--panel-2) 8px,var(--panel-2) 9px)}
+
+  /* window cards */
+  .win{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:10px}
+  .win .wt{display:flex;align-items:center;gap:8px}
+  .win .wt b{font-size:15px}
+  .win .role{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);border:1px solid var(--gold-soft);padding:2px 6px;border-radius:5px}
+  .win ul{margin:0;padding-left:16px;color:var(--ink-2);font-size:13.5px}
+  .win .vis{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+  figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  figure figcaption{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:10px;line-height:1.5}
+  figure figcaption b{color:var(--ink-2)}
+  .chartsurf{background:var(--chart);border-radius:8px;padding:8px}
+
+  .rule{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+  .rule .rn{font-family:var(--mono);color:var(--gold);font-size:13px;flex:none;width:26px}
+  .rule .rb b{font-weight:700}
+  .rule .rb{font-size:14px}
+  .rule .rb span{color:var(--ink-2)}
+
+  blockquote.charter{font-family:var(--serif);font-size:19px;line-height:1.5;color:var(--ink);
+    border-left:2px solid var(--gold);margin:0;padding:6px 0 6px 20px;max-width:64ch}
+
+  footer{padding:44px 0 70px;color:var(--ink-3)}
+  footer .mono{font-size:12px}
+  code.tok{font-family:var(--mono);font-size:12px;background:var(--panel-2);padding:1px 6px;border-radius:5px;color:var(--ink)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;transform:translateY(1px)}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand"><span class="dia">◆</span>Voss&nbsp;Edge <small>Design System</small></span>
+    <nav class="sect" aria-label="Sections">
+      <a href="#foundations">Foundations</a>
+      <a href="#components">Components</a>
+      <a href="#windows">Windows</a>
+      <a href="#graphs">Graphs</a>
+      <a href="#rules">Rules</a>
+    </nav>
+    <button class="tbtn" id="themeToggle" aria-label="Toggle color theme">◐ theme</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Multi-sport prop-betting terminal · MLB · NFL · CFB</p>
+    <h1>A ledger, not a<br>slot machine. Find the <span class="edge">edge</span>.</h1>
+    <p class="lede">The visual language for a disciplined, layered betting model — where every number
+      is a probability until a price is attached, every layer is graded on its own, and the interface
+      is built to be <em>scanned and operated</em>, not admired. This guide is the portable spec:
+      palette, type, components, windows, and charts, ready to rebuild anywhere.</p>
+    <div class="meta">
+      <span>Motif&nbsp;<b>Medallion + Ledger</b></span>
+      <span>Numbers&nbsp;<b>Always monospace</b></span>
+      <span>Themes&nbsp;<b>Ink / Paper</b></span>
+      <span>Charts&nbsp;<b>CVD-validated</b></span>
+    </div>
+  </div>
+</div>
+
+<!-- FOUNDATIONS -->
+<section id="foundations">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">01</span><div><h2>Foundations</h2>
+      <p>Cool graphite neutrals with a faint gold bias — a terminal that feels considered, not clinical.
+      Gold is reserved: it marks the brand, the top tier, and the Gold data layer, nothing else.</p></div></div>
+
+    <div class="grid g4" style="margin-bottom:26px">
+      <div class="sw"><div class="chip" style="background:var(--paper)"></div><div class="row"><span class="name">Paper / Ink ground</span></div><div class="row"><span class="hex">#FBFAF7 · #0F1215</span></div><div class="use">Page grounds. Warm off-white, cool near-black — both picked, neither pure.</div></div>
+      <div class="sw"><div class="chip" style="background:var(--gold)"></div><div class="row"><span class="name">Gold — accent</span><span class="hex">#B0842A</span></div><div class="use">Brand mark, active nav, hairline emphasis, L5/Gold-layer. Used sparingly.</div></div>
+      <div class="sw"><div class="chip" style="background:var(--pos)"></div><div class="row"><span class="name">+EV green</span><span class="hex">#0C8A0C</span></div><div class="use">Positive edge, wins. Always paired with a sign and ▲.</div></div>
+      <div class="sw"><div class="chip" style="background:var(--neg)"></div><div class="row"><span class="name">−EV red</span><span class="hex">#C7362F</span></div><div class="use">Negative edge, losses. Always paired with a sign and ▼.</div></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4>Medallion metals <span class="k">— data-layer motif</span></h4>
+        <p class="use" style="margin:6px 0 12px">The Bronze→Silver→Gold pipeline is a real part of the architecture, so it earns a real palette. Metals label data provenance and layer maturity — never chart series.</p>
+        <div class="ramp">
+          <span style="background:var(--bronze)">BRONZE</span>
+          <span style="background:var(--silver);color:#1a1a19;text-shadow:none">SILVER</span>
+          <span style="background:var(--goldm)">GOLD</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>Tier ramp <span class="k">— L1→L5 confidence (sequential/ordinal blue)</span></h4>
+        <p class="use" style="margin:6px 0 12px">Tier is ordered confidence, so it reads as one hue deepening. L1 is tracked-not-bet; L5 is the strongest edge. Deeper = more conviction.</p>
+        <div class="ramp">
+          <span style="background:var(--t1);color:#0b2447;text-shadow:none">L1</span>
+          <span style="background:var(--t2)">L2</span><span style="background:var(--t3)">L3</span>
+          <span style="background:var(--t4)">L4</span><span style="background:var(--t5)">L5</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h4>Chart categorical <span class="k">— the five feature layers</span></h4>
+        <p class="use" style="margin:6px 0 12px">Fixed order, CVD-validated (OKLab ΔE). Scoring layers grade differently than environment layers, so charts <b>facet</b> the two groups — color carries identity, position carries the guardrail.</p>
+        <div class="legend">
+          <span><i style="background:var(--c-form)"></i>form</span>
+          <span><i style="background:var(--c-opp)"></i>opponent</span>
+          <span><i style="background:var(--c-bull)"></i>bullpen</span>
+          <span><i style="background:var(--c-park)"></i>park</span>
+          <span><i style="background:var(--c-ctx)"></i>context</span>
+        </div>
+        <p class="use" style="margin-top:10px"><b>Scoring:</b> form · opponent · bullpen &nbsp;|&nbsp; <b>Environment:</b> park · context</p>
+      </div>
+      <div class="card">
+        <h4>Status <span class="k">— data health, reserved</span></h4>
+        <p class="use" style="margin:6px 0 12px">Separate from every series hue. Always ships with an icon + label, never color alone — a coverage gap must read at a glance and in greyscale.</p>
+        <div class="rowwrap">
+          <span class="status s-good"><span class="ico">●</span> fresh</span>
+          <span class="status s-warn"><span class="ico">▲</span> stale &gt;24h</span>
+          <span class="status s-crit"><span class="ico">■</span> coverage gap</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- typography -->
+    <div class="sec-head" style="margin-top:44px"><span class="no">01·b</span><div><h2>Typography</h2>
+      <p>Three voices. A heavy grotesque for structure, a serif charter for the non-negotiables, and — the signature — a monospace for <em>every number on the screen</em>, set in tabular figures so columns of odds line up like a ledger.</p></div></div>
+    <div class="card">
+      <div class="typerow"><span class="tag">DISPLAY · sans</span><span style="font-family:var(--sans);font-weight:800;font-size:30px;letter-spacing:-.02em">Edge Board — 14 slates</span></div>
+      <div class="typerow"><span class="tag">DATA · mono</span><span class="mono" style="font-size:22px;font-weight:600">+0.074 · 4.7% · L4 · +112</span></div>
+      <div class="typerow"><span class="tag">CHARTER · serif</span><span style="font-family:var(--serif);font-size:21px">Price before tiering.</span></div>
+      <div class="typerow"><span class="tag">BODY · sans</span><span class="muted" style="max-width:52ch">Confirmed starters only before tiering, so information errors stay separable from judgment errors.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPONENTS -->
+<section id="components">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">02</span><div><h2>Components</h2>
+      <p>Encode state in form as well as number. A pill, a chip, a sign — so what needs attention reads before it's read.</p></div></div>
+
+    <div class="grid g3">
+      <div class="demo">
+        <span class="cap">Tier chip · L1–L5</span>
+        <div class="rowwrap">
+          <span class="tier l1">L1</span><span class="tier l2">L2</span><span class="tier l3">L3</span>
+          <span class="tier l4">L4</span><span class="tier l5">L5</span>
+        </div>
+        <span class="faint" style="font-size:12px">Deeper blue = higher conviction. L1 is tracked, never staked.</span>
+      </div>
+
+      <div class="demo">
+        <span class="cap">Devig quality</span>
+        <div class="rowwrap">
+          <span class="badge two"><span class="dot" style="background:var(--pos)"></span>two-way</span>
+          <span class="badge assumed"><span class="dot" style="background:var(--warn)"></span>assumed vig</span>
+        </div>
+        <span class="faint" style="font-size:12px">One-sided prices are lower-confidence — the tier layer caps them.</span>
+      </div>
+
+      <div class="demo">
+        <span class="cap">Edge / EV cell</span>
+        <div class="rowwrap" style="font-size:18px">
+          <span class="ev pos">▲ +0.074</span>
+          <span class="ev neg">▼ −0.021</span>
+        </div>
+        <span class="faint" style="font-size:12px">Sign is the primary channel; color reinforces. Never color alone.</span>
+      </div>
+
+      <div class="demo">
+        <span class="cap">Actives gate</span>
+        <div class="rowwrap">
+          <span class="badge two"><span class="dot" style="background:var(--pos)"></span>lineup confirmed</span>
+          <span class="badge"><span class="dot" style="background:var(--ink-3)"></span>slot projected</span>
+        </div>
+        <span class="faint" style="font-size:12px">Confirmed-actives-only before a pick leaves L1.</span>
+      </div>
+
+      <div class="demo">
+        <span class="cap">Source root · independence</span>
+        <div class="rowwrap">
+          <span class="badge"><span class="dot" style="background:var(--c-form)"></span>statcast</span>
+          <span class="badge"><span class="dot" style="background:var(--c-opp)"></span>mlb_statsapi</span>
+          <span class="badge"><span class="dot" style="background:var(--c-park)"></span>open_meteo</span>
+        </div>
+        <span class="faint" style="font-size:12px">Count independent roots, not vendor feeds. Collisions collapse to one.</span>
+      </div>
+
+      <div class="demo">
+        <span class="cap">Unpriced state · guardrail</span>
+        <div class="unpriced">no price yet — probability only<br><span class="faint">no EV until odds attach</span></div>
+      </div>
+    </div>
+
+    <div class="grid g4" style="margin-top:16px">
+      <div class="kpi"><span class="lbl">Playable edges</span><span class="big">18</span><span class="sub muted">of 214 props</span></div>
+      <div class="kpi"><span class="lbl">Flat-stake ROI</span><span class="big" style="color:var(--pos)">+6.2%</span><span class="sub"><span class="ev pos">▲</span> 41-slate holdout</span></div>
+      <div class="kpi"><span class="lbl">Calibration gap</span><span class="big">0.9<span style="font-size:16px">pp</span></span><span class="sub muted">max decile</span></div>
+      <div class="kpi"><span class="lbl">Odds quota</span><span class="big">17.6<span style="font-size:16px">k</span></span><span class="sub s-good">● healthy</span></div>
+    </div>
+
+    <!-- prop card + table -->
+    <div class="grid g2" style="margin-top:16px;align-items:start">
+      <div class="propcard">
+        <div class="ph">
+          <div><div class="nm">Kyle Schwarber</div><div class="sub">HR · vs RHP MacKenzie Gore · PHI@WSH</div></div>
+          <span class="tier l4">L4</span>
+        </div>
+        <div class="pb">
+          <div class="prow"><span class="l">model P(HR)</span><span>4.7%</span></div>
+          <div class="prow"><span class="l">market (devig)</span><span>3.9% <span class="faint">· two-way</span></span></div>
+          <div class="prow"><span class="l">edge / EV / Kelly</span><span class="ev pos">+0.074 · +0.18 · 0.04</span></div>
+          <div class="prow"><span class="l">line · book</span><span>+330 · DraftKings</span></div>
+          <div class="shap" style="margin-top:2px">
+            <span class="cap">top drivers · SHAP</span>
+            <div class="sr"><div class="sbar"><i style="background:var(--pos);left:50%;width:34%"></i></div><span>pull_fb</span></div>
+            <div class="sr"><div class="sbar"><i style="background:var(--pos);left:50%;width:22%"></i></div><span>park_hr</span></div>
+            <div class="sr"><div class="sbar"><i style="background:var(--neg);right:50%;width:14%"></i></div><span>opp_hr9</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tblwrap">
+        <table class="edge">
+          <thead><tr><th>Player</th><th>P</th><th>Mkt</th><th>Edge</th><th>EV</th><th>Book</th><th>Tier</th></tr></thead>
+          <tbody>
+            <tr><td class="player">K. Schwarber</td><td>4.7%</td><td>3.9%</td><td style="color:var(--pos)">+.074</td><td style="color:var(--pos)">+.18</td><td>+330</td><td><span class="tier l4">L4</span></td></tr>
+            <tr><td class="player">A. Judge</td><td>6.1%</td><td>5.4%</td><td style="color:var(--pos)">+.061</td><td style="color:var(--pos)">+.11</td><td>+240</td><td><span class="tier l3">L3</span></td></tr>
+            <tr><td class="player">S. Ohtani</td><td>5.5%</td><td>5.2%</td><td style="color:var(--pos)">+.028</td><td style="color:var(--pos)">+.04</td><td>+265</td><td><span class="tier l2">L2</span></td></tr>
+            <tr><td class="player">J. Soto</td><td>4.0%</td><td>4.6%</td><td style="color:var(--neg)">−.021</td><td style="color:var(--neg)">−.06</td><td>+410</td><td><span class="tier l1">L1</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WINDOWS -->
+<section id="windows">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">03</span><div><h2>Windows</h2>
+      <p>Six operating views plus the shell. Each surfaces its summary before its detail — you should know whether to act before you start reading rows.</p></div></div>
+    <div class="grid g3">
+      <div class="win"><div class="wt"><span class="role">primary</span><b>Edge Board</b></div>
+        <div class="vis">▤ dense table · KPI strip</div>
+        <ul><li>One row per prop: P, devig market, edge, EV, Kelly, book, tier</li><li>Filters: sport · tier ≥ · edge ≥ · book</li><li>Sort by edge; L1 dimmed (tracked, not bet)</li></ul></div>
+
+      <div class="win"><div class="wt"><span class="role">detail</span><b>Prop Card</b></div>
+        <div class="vis">▦ card · SHAP bars</div>
+        <ul><li>Calibrated P, market, edge/EV/Kelly, tier + cap reason</li><li>Top-3 signed SHAP drivers</li><li>Narrative slot (numbers-injected only)</li></ul></div>
+
+      <div class="win"><div class="wt"><span class="role">analysis</span><b>Layer Backtest</b></div>
+        <div class="vis">▥ faceted bars</div>
+        <ul><li>Per-layer coverage · corr · AUC · ROI</li><li>Environment vs scoring, graded apart</li><li>Sport-parameterized</li></ul></div>
+
+      <div class="win"><div class="wt"><span class="role">model</span><b>Model Health</b></div>
+        <div class="vis">◠ reliability curve</div>
+        <ul><li>Reliability curve — the go/no-go artifact</li><li>Brier · log-loss · calibration gap</li><li>Fold date ranges (leakage audit)</li></ul></div>
+
+      <div class="win"><div class="wt"><span class="role">tracking</span><b>Results / Bankroll</b></div>
+        <div class="vis">◢ cumulative ROI</div>
+        <ul><li>Flat-stake units over time, by tier</li><li>Settled hits/misses vs official logs</li><li>Marathon view — variance made legible</li></ul></div>
+
+      <div class="win"><div class="wt"><span class="role">ops</span><b>Data Health</b></div>
+        <div class="vis">▨ status tiles · heatmap</div>
+        <ul><li>Ingest freshness per source_root</li><li>Coverage gaps flagged, not dropped</li><li>Odds quota · publish status · Discord alerts</li></ul></div>
+    </div>
+    <p class="muted" style="margin-top:16px;font-size:14px"><b>Shell:</b> a persistent top bar — sport switch (MLB / NFL / CFB), slate date, and a global freshness dot — wraps every window. The Edge Board is home.</p>
+  </div>
+</section>
+
+<!-- GRAPHS -->
+<section id="graphs">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">04</span><div><h2>Graphs &amp; visuals</h2>
+      <p>Four load-bearing charts, each answering one question. Thin marks, a recessive grid, an emphasized endpoint, and text in ink — never in the series color.</p></div></div>
+
+    <div class="grid g2">
+      <!-- calibration -->
+      <figure>
+        <div class="chartsurf">
+          <svg viewBox="0 0 320 200" width="100%" role="img" aria-label="Reliability curve: predicted vs observed HR rate, near the diagonal">
+            <line x1="40" y1="170" x2="300" y2="170" stroke="var(--line-2)"/>
+            <line x1="40" y1="20" x2="40" y2="170" stroke="var(--line-2)"/>
+            <line x1="40" y1="170" x2="300" y2="20" stroke="var(--ink-3)" stroke-dasharray="4 4" stroke-width="1"/>
+            <polyline points="40,170 92,150 118,128 157,108 196,86 235,60 300,26" fill="none" stroke="var(--c-form)" stroke-width="2" stroke-linejoin="round"/>
+            <g fill="var(--c-form)">
+              <circle cx="92" cy="150" r="3.5"/><circle cx="118" cy="128" r="3.5"/><circle cx="157" cy="108" r="3.5"/>
+              <circle cx="196" cy="86" r="3.5"/><circle cx="235" cy="60" r="3.5"/><circle cx="300" cy="26" r="4.5"/>
+            </g>
+            <text x="40" y="188" fill="var(--ink-3)" font-family="var(--mono)" font-size="9">predicted →</text>
+            <text x="14" y="24" fill="var(--ink-3)" font-family="var(--mono)" font-size="9">obs</text>
+          </svg>
+        </div>
+        <figcaption><b>Reliability curve</b> — the go/no-go. Predicted decile vs observed rate; the dashed diagonal is perfect. Hug it or don't bet. One series (blue), so no legend — the title names it.</figcaption>
+      </figure>
+
+      <!-- ROI -->
+      <figure>
+        <div class="chartsurf">
+          <svg viewBox="0 0 320 200" width="100%" role="img" aria-label="Cumulative flat-stake ROI trending up to plus 6.2 percent">
+            <line x1="40" y1="120" x2="300" y2="120" stroke="var(--line-2)" stroke-dasharray="3 3"/>
+            <path d="M40,132 L80,138 L120,122 L160,128 L200,104 L240,96 L300,70 L300,120 L40,120 Z" fill="color-mix(in srgb,var(--pos) 14%,transparent)"/>
+            <polyline points="40,132 80,138 120,122 160,128 200,104 240,96 300,70" fill="none" stroke="var(--pos)" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="300" cy="70" r="4.5" fill="var(--pos)"/>
+            <text x="228" y="60" fill="var(--pos)" font-family="var(--mono)" font-size="11" font-weight="700">+6.2%</text>
+            <text x="40" y="188" fill="var(--ink-3)" font-family="var(--mono)" font-size="9">slate →</text>
+            <text x="44" y="116" fill="var(--ink-3)" font-family="var(--mono)" font-size="8">break-even</text>
+          </svg>
+        </div>
+        <figcaption><b>Cumulative flat-stake ROI</b> — the KPI, not RMSE. Area fill + emphasized endpoint; break-even baseline dashed. Green only because it's above zero — sign drives the color.</figcaption>
+      </figure>
+
+      <!-- layer predictiveness -->
+      <figure>
+        <div class="chartsurf">
+          <svg viewBox="0 0 320 200" width="100%" role="img" aria-label="Layer predictiveness bars, environment faceted from scoring">
+            <text x="14" y="26" fill="var(--ink-3)" font-family="var(--mono)" font-size="9" letter-spacing="1">SCORING</text>
+            <g font-family="var(--mono)" font-size="10" fill="var(--ink-2)">
+              <rect x="90" y="34" width="150" height="13" rx="3" fill="var(--c-form)"/><text x="16" y="44">form</text>
+              <rect x="90" y="52" width="112" height="13" rx="3" fill="var(--c-opp)"/><text x="16" y="62">opp</text>
+              <rect x="90" y="70" width="58" height="13" rx="3" fill="var(--c-bull)"/><text x="16" y="80">bull</text>
+            </g>
+            <text x="14" y="110" fill="var(--ink-3)" font-family="var(--mono)" font-size="9" letter-spacing="1">ENVIRONMENT</text>
+            <g font-family="var(--mono)" font-size="10" fill="var(--ink-2)">
+              <rect x="90" y="118" width="132" height="13" rx="3" fill="var(--c-park)"/><text x="16" y="128">park</text>
+              <rect x="90" y="136" width="40" height="13" rx="3" fill="var(--c-ctx)"/><text x="16" y="146">ctx</text>
+            </g>
+            <line x1="90" y1="30" x2="90" y2="156" stroke="var(--line-2)"/>
+            <text x="90" y="172" fill="var(--ink-3)" font-family="var(--mono)" font-size="9">AUC lift →</text>
+          </svg>
+        </div>
+        <figcaption><b>Layer predictiveness</b> — which layers earn their place. Faceted <b>environment vs scoring</b> (the guardrail is in the layout, not the color); park beats context, form leads scoring.</figcaption>
+      </figure>
+
+      <!-- SHAP -->
+      <figure>
+        <div class="chartsurf">
+          <svg viewBox="0 0 320 200" width="100%" role="img" aria-label="Signed SHAP drivers diverging from center">
+            <line x1="160" y1="24" x2="160" y2="176" stroke="var(--ink-3)"/>
+            <g font-family="var(--mono)" font-size="10" fill="var(--ink-2)">
+              <rect x="160" y="36" width="96" height="15" rx="3" fill="var(--pos)"/><text x="12" y="47">b_pull_fb_rate_30d</text>
+              <rect x="160" y="66" width="64" height="15" rx="3" fill="var(--pos)"/><text x="12" y="77">park_hr_factor</text>
+              <rect x="160" y="96" width="50" height="15" rx="3" fill="var(--pos)"/><text x="12" y="107">b_barrel_rate_30d</text>
+              <rect x="118" y="126" width="42" height="15" rx="3" fill="var(--neg)"/><text x="12" y="137">p_hr_per_pa_allowed</text>
+              <rect x="132" y="156" width="28" height="15" rx="3" fill="var(--neg)"/><text x="12" y="167">is_night</text>
+            </g>
+            <text x="176" y="20" fill="var(--pos)" font-family="var(--mono)" font-size="9">raises P →</text>
+            <text x="70" y="20" fill="var(--neg)" font-family="var(--mono)" font-size="9">← lowers</text>
+          </svg>
+        </div>
+        <figcaption><b>SHAP drivers</b> — why this pick. Diverging from a zero spine: green raises P(HR), red lowers it. Direct-labeled, so it's readable in greyscale and for CVD.</figcaption>
+      </figure>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h4>Also in the kit</h4>
+      <p class="use" style="margin-top:6px"><b>Edge distribution</b> histogram (spot the fat tail) · <b>Tier distribution</b> stacked ordinal bar · <b>Coverage heatmap</b> source_root × date, sequential blue (light = missing) · <b>KPI sparklines</b> on every tile. All share the same grid weight, endpoint emphasis, and ink-colored text. Every line/area chart ships a crosshair tooltip; every bar/cell a per-mark hover.</p>
+    </div>
+  </div>
+</section>
+
+<!-- RULES -->
+<section id="rules">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">05</span><div><h2>Rules the interface enforces</h2>
+      <p>The model's non-negotiables are also UI contracts. The design makes each one visible.</p></div></div>
+    <blockquote class="charter">Every number is a probability until a price is attached. No EV without a price.</blockquote>
+    <div style="margin-top:20px">
+      <div class="rule"><span class="rn">01</span><div class="rb"><b>Price before tiering.</b> <span>An un-priced prop shows the hatched <em>unpriced</em> state — a probability with no tier, never a fake edge.</span></div></div>
+      <div class="rule"><span class="rn">02</span><div class="rb"><b>Sign, then color.</b> <span>+EV / −EV always carry a <span class="mono">+ / −</span> and a ▲/▼. Red-green never carries meaning alone (CVD, print, greyscale).</span></div></div>
+      <div class="rule"><span class="rn">03</span><div class="rb"><b>Environment ≠ scoring.</b> <span>Layer charts facet the two groups; you can never read a park signal as if it were a bat signal.</span></div></div>
+      <div class="rule"><span class="rn">04</span><div class="rb"><b>Confirmed actives only.</b> <span>A projected-slot badge keeps a pick at L1 until the lineup posts — information error stays separable from judgment error.</span></div></div>
+      <div class="rule"><span class="rn">05</span><div class="rb"><b>Count independent roots.</b> <span>Source chips collapse collisions (Statcast-derived feeds → one root) so corroboration is never double-counted.</span></div></div>
+      <div class="rule"><span class="rn">06</span><div class="rb"><b>Numbers are monospace, always.</b> <span>Tabular figures so odds, probs, and units align down every column — the ledger discipline, made visual.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p class="mono">TOKENS · <code class="tok">--gold #B0842A</code> <code class="tok">--pos #0C8A0C</code> <code class="tok">--neg #C7362F</code>
+      <code class="tok">--t1..t5 blue ramp</code> <code class="tok">--mono SF Mono</code> · categorical validated OKLab ΔE, both themes.</p>
+    <p class="muted" style="margin-top:10px;max-width:70ch">Field map for handoff — the UI reads the data model directly:
+      <code class="tok">model_p</code> → P · <code class="tok">market_p_devig</code> → Mkt · <code class="tok">edge</code> ·
+      <code class="tok">ev_per_unit</code> → EV · <code class="tok">kelly_frac</code> → Kelly · <code class="tok">tier</code> +
+      <code class="tok">caps_applied</code> → chip · <code class="tok">layer</code> → chart facet · <code class="tok">source_root</code> → chip.</p>
+    <p class="faint mono" style="margin-top:16px">Voss Edge Design System · rebuild anywhere · ink &amp; paper, medallion &amp; ledger.</p>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var btn=document.getElementById('themeToggle');
+    var root=document.documentElement;
+    btn.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme');
+      var dark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme',dark?'light':'dark');
+    });
+  })();
+</script>
